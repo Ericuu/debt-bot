@@ -232,9 +232,14 @@ async def handle_text_input(message: types.Message):
         elif current_state == "edit_expense": 
             numbers = re.findall(r'\d+', text) 
             if numbers: exp = int("".join(numbers)) 
-                db["current_expense"] = exp user_states[user_id] = None
+                db["current_expense"] = exp 
+            user_states[user_id] = None
         
-        fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
+        fin = get_financial_summary() 
+        await message.reply(
+            f"✅ **【本月已花費金額已修正為：${exp:,}】**\n
+            f"目前剩餘可用：${fin['remaining_budget']:,}"
+            )
             return
 
     elif current_state == "edit_debt":
