@@ -1,4 +1,2 @@
-aiogram
-easyocr
-apscheduler
-pillow
+aiogram==3.3.1
+apscheduler==3.11.3
