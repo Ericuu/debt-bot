@@ -3,7 +3,6 @@ import re
 import logging
 import calendar
 from datetime import datetime
-import easyocr
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -18,11 +17,6 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 scheduler = AsyncIOScheduler(timezone="Asia/Taipei")
 
-# 初始化 EasyOCR (支援繁體中文與英文/數字)
-print("正在載入 EasyOCR 模型，請稍候...")
-reader = easyocr.Reader(['ch_tra', 'en'])
-print("OCR 模型載入完成！")
-
 # 模擬資料庫狀態
 db = {
     "total_debt": 874000,          # 總負債 Boss 血量
@@ -33,7 +27,7 @@ db = {
 }
 
 user_states = {}       # 記錄使用者狀態
-pending_payments = {}  # 暫存 OCR 辨識出來的還款金額
+pending_payments = {}  # 暫存還款金額
 
 # ================= 核心計算輔助函式 =================
 def get_financial_summary():
@@ -70,9 +64,8 @@ async def cmd_start(message: types.Message):
         "💡 **功能特色：**\n"
         "• 每日定時提醒記錄開銷\n"
         "• 每月 5 號/10 號引導輸入收入與試算預算\n"
-        "• 傳送匯款截圖，自動 OCR 辨識金額扣血\n"
-        "• 支援隨時修改/修正記帳或收入錯誤\n"
-        "• 充滿打怪快感的 Boss 傷害特效與激勵回饋！"
+        "• 傳送截圖並直接回覆數字，輕鬆對 Boss 發動還款扣血攻擊\n"
+        "• 支援隨時透過 `/edit` 修改/修正記帳或收入錯誤"
     )
     await send_status_report(message.chat.id)
 
@@ -117,8 +110,7 @@ async def send_status_report(chat_id: int):
             InlineKeyboardButton(text="💵 新增收入登記", callback_data="btn_input_income")
         ],
         [
-            InlineKeyboardButton(text="🛠️ 修正錯誤數值", callback_data="btn_edit_menu"),
-            InlineKeyboardButton(text="💳 上傳還款憑證", callback_data="btn_upload")
+            InlineKeyboardButton(text="🛠️ 修正錯誤數值", callback_data="btn_edit_menu")
         ]
     ])
 
@@ -146,7 +138,7 @@ async def job_settlement_reminder():
         "🔔 **【5號 / 10號：財務結算與還款日】**\n\n"
         "今天是固定還款與結算日！\n"
         "1️⃣ 請點擊下方按鈕登記本月「總收入金額」。\n"
-        "2️⃣ 隨後請上傳銀行轉帳截圖，將自動辨識並扣減 Boss 血量！⚔️",
+        "2️⃣ 隨後可上傳匯款截圖並直接輸入數字，對 Boss 發動扣血攻擊！⚔️",
         reply_markup=keyboard,
         parse_mode="Markdown"
     )
@@ -217,49 +209,11 @@ async def cb_cancel_pay(callback: types.CallbackQuery):
 # ================= 4. 訊息與截圖處理 =================
 @dp.message(F.photo)
 async def handle_screenshot(message: types.Message):
-    photo = message.photo[-1]
-    file_info = await bot.get_file(photo.file_id)
-    file_path = f"temp_{message.from_user.id}.jpg"
-    
-    await bot.download_file(file_info.file_path, file_path)
-    processing_msg = await message.reply("🔍 收到截圖！正在進行 OCR 智慧辨識金額中，請稍候...")
-
-    try:
-        results = reader.readtext(file_path, detail=0)
-        full_text = " ".join(results)
-    except Exception as e:
-        full_text = ""
-        logging.error(f"OCR Error: {e}")
-    finally:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-    matches = re.findall(r'(?:NT\$|\$|\b)\s*([1-9]\d{0,2}(?:,\d{3})+|[1-9]\d{3,6})\s*(?:元|\b)', full_text)
-    await bot.delete_message(chat_id=message.chat.id, message_id=processing_msg.message_id)
-
-    if matches:
-        detected_amount = int(matches[0].replace(',', ''))
-        pending_payments[message.from_user.id] = detected_amount
-
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text=f"⚔️ 轟炸 Boss 扣血 ${detected_amount:,}", callback_data="confirm_pay"),
-                InlineKeyboardButton(text="❌ 取消", callback_data="cancel_pay")
-            ]
-        ])
-
-        await message.reply(
-            f"🎯 **【OCR 辨識成功，準備發動攻擊！】**\n\n"
-            f"偵測到轉帳匯款金額：**${detected_amount:,}**\n"
-            f"是否要對負債 Boss 發動本次還款攻擊？",
-            reply_markup=keyboard,
-            parse_mode="Markdown"
-        )
-    else:
-        await message.reply(
-            "⚠️ 抱歉，未能從截圖中自動清晰辨識出金額。\n"
-            "請直接回覆數字（例如：`25000`），我將為您手動執行扣血！"
-        )
+    # 暫存狀態，提示使用者直接輸入轉帳金額來扣血
+    await message.reply(
+        "📸 **收到匯款截圖！**\n"
+        "請直接回覆輸入本次轉帳的金額數字（例如：`25000`），我將為您發動扣血攻擊！⚔️"
+    )
 
 @dp.message(F.text & ~F.text.startswith("/"))
 async def handle_text_input(message: types.Message):
@@ -267,7 +221,7 @@ async def handle_text_input(message: types.Message):
     text = message.text.strip()
     current_state = user_states.get(user_id)
 
-# 1. 處理狀態：修改收入
+    # 1. 處理狀態：修改收入
     if current_state == "waiting_for_income" or current_state == "edit_income":
         numbers = re.findall(r'\d+', text)
         if numbers:
@@ -283,20 +237,7 @@ async def handle_text_input(message: types.Message):
                 f"⚔️ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"───────────────────\n"
                 f"🛍️ 本月可用開銷上限：${db['expense_limit']:,}\n"
-                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)"
-            )
-            return
-
-    # 2. 處理狀態：修改已花費
-    elif current_state == "edit_expense":
-        numbers = re.findall(r'\d+', text)
-        if numbers:
-            exp = int("".join(numbers))
-            db["current_expense"] = exp
-            user_states[user_id] = None
-
-            fin = get_financial_summary()
-            await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
+                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" ) return      # 2. 處理狀態：修改已花費 elif current_state == "edit_expense": numbers = re.findall(r'\d+', text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
             return
 
     # 3. 處理狀態：修改總負債
@@ -311,8 +252,23 @@ async def handle_text_input(message: types.Message):
             await message.reply(f"✅ **【總負債 Boss 血量已修正為：${debt:,}】**\n目前通關進度：{fin['progress']*100:.1f}%")
             return
 
-    # 4. 一般文字：預設當作「記帳」處理
+    # 4. 判斷是否為「還款金額確認」階段（例如剛才傳了截圖後輸入數字）
     numbers = re.findall(r'\d+', text)
+    if numbers and len(numbers) == 1 and int(numbers[0]) > 5000: # 假設大於5000通常是還款或大筆金額
+        # 也可以選擇直接當作還款，或提供按鈕確認
+        amount = int(numbers[0])
+        pending_payments[user_id] = amount
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text=f"⚔️ 確認轟炸 Boss 扣血 ${amount:,}", callback_data="confirm_pay"),
+                InlineKeyboardButton(text="❌ 取消", callback_data="cancel_pay")
+            ]
+        ])
+        await message.reply(f"🎯 準備對 Boss 發動還款攻擊，金額：**${amount:,}**，請確認：", reply_markup=keyboard, parse_mode="Markdown")
+        return
+
+    # 5. 一般文字：預設當作「記帳」處理
     if numbers:
         amount = int(numbers[0])
         db["current_expense"] += amount
@@ -326,7 +282,7 @@ async def handle_text_input(message: types.Message):
 
         await message.reply(f"📝 記錄消費：**${amount}** ({text}){warning}", parse_mode="Markdown")
     else:
-        await message.reply("💡 看不太懂這筆消費，直接輸入數字與備註即可記帳（例如：`晚餐 150`），或輸入 /edit 修改資料。")
+        await message.reply("💡 輸入數字與備註即可記帳（例如：`晚餐 150`），或輸入還款金額扣血，或輸入 /edit 修改資料。")
 
 # ================= 5. 啟動主程式 =================
 async def main():
