@@ -237,7 +237,8 @@ async def handle_text_input(message: types.Message):
                 f"⚔️ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"───────────────────\n"
                 f"🛍️ 本月可用開銷上限：${db['expense_limit']:,}\n"
-                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" ) return      # 2. 處理狀態：修改已花費 elif current_state == "edit_expense": numbers = re.findall(r'\d+', text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
+                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" ) return      
+            # 2. 處理狀態：修改已花費 elif current_state == "edit_expense": numbers = re.findall(r'\d+', text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
             return
 
     # 3. 處理狀態：修改總負債
