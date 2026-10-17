@@ -8,28 +8,24 @@ from aiogram.filters import Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# ================= 參數設定 =================
 TOKEN = "8914207417:AAGetEpgDvuf--poYSVsR51XFjDanAhGKa4"
-ADMIN_CHAT_ID = 5370959021438146805  # 你的 Telegram 數字 ID
+ADMIN_CHAT_ID = 5370959021438146805
 
-# 初始化 Bot 與 Dispatcher
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 scheduler = AsyncIOScheduler(timezone="Asia/Taipei")
 
-# 模擬資料庫狀態
 db = {
-    "total_debt": 874000,          # 總負債 Boss 血量
-    "monthly_target": 50000,        # 每月固定還款目標
-    "monthly_income": 0,           # 本月收入
-    "expense_limit": 0,            # 本月開銷上限 (收入 - 50000)
-    "current_expense": 0           # 本月已花費
+    "total_debt": 874000,
+    "monthly_target": 50000,
+    "monthly_income": 0,
+    "expense_limit": 0,
+    "current_expense": 0
 }
 
-user_states = {}       # 記錄使用者狀態
-pending_payments = {}  # 暫存還款金額
+user_states = {}
+pending_payments = {}
 
-# ================= 核心計算輔助函式 =================
 def get_financial_summary():
     progress = (874000 - db["total_debt"]) / 874000
     bar_len = 10
@@ -54,7 +50,6 @@ def get_financial_summary():
         "status_emoji": status_emoji
     }
 
-# ================= 1. 指令與狀態查看 =================
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     await message.answer(
@@ -116,7 +111,6 @@ async def send_status_report(chat_id: int):
 
     await bot.send_message(chat_id, text, reply_markup=keyboard, parse_mode="Markdown")
 
-# ================= 2. 定時推播任務 =================
 async def job_daily_expense_reminder():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 查看目前進度", callback_data="btn_status")]
@@ -143,7 +137,6 @@ async def job_settlement_reminder():
         parse_mode="Markdown"
     )
 
-# ================= 3. 互動按鈕與修改選單處理 =================
 @dp.callback_query(F.data == "btn_status")
 async def cb_status(callback: types.CallbackQuery):
     await send_status_report(callback.message.chat.id)
@@ -206,10 +199,8 @@ async def cb_cancel_pay(callback: types.CallbackQuery):
     await callback.message.edit_text("❌ 已取消本次還款扣血。")
     await callback.answer()
 
-# ================= 4. 訊息與截圖處理 =================
 @dp.message(F.photo)
 async def handle_screenshot(message: types.Message):
-    # 暫存狀態，提示使用者直接輸入轉帳金額來扣血
     await message.reply(
         "📸 **收到匯款截圖！**\n"
         "請直接回覆輸入本次轉帳的金額數字（例如：`25000`），我將為您發動扣血攻擊！⚔️"
@@ -221,7 +212,6 @@ async def handle_text_input(message: types.Message):
     text = message.text.strip()
     current_state = user_states.get(user_id)
 
-    # 1. 處理狀態：修改收入
     if current_state == "waiting_for_income" or current_state == "edit_income":
         numbers = re.findall(r'\d+', text)
         if numbers:
@@ -237,12 +227,9 @@ async def handle_text_input(message: types.Message):
                 f"⚔️ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"───────────────────\n"
                 f"🛍️ 本月可用開銷上限：${db['expense_limit']:,}\n"
-                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" ) 
-            return      
-            # 2. 處理狀態：修改已花費 elif current_state == "edit_expense": numbers = re.findall(r'\d+', text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
+                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" ) return      elif current_state == "edit_expense": numbers = re.findall(r'\d+', text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() await message.reply(f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}")
             return
 
-    # 3. 處理狀態：修改總負債
     elif current_state == "edit_debt":
         numbers = re.findall(r'\d+', text)
         if numbers:
@@ -254,10 +241,8 @@ async def handle_text_input(message: types.Message):
             await message.reply(f"✅ **【總負債 Boss 血量已修正為：${debt:,}】**\n目前通關進度：{fin['progress']*100:.1f}%")
             return
 
-    # 4. 判斷是否為「還款金額確認」階段（例如剛才傳了截圖後輸入數字）
     numbers = re.findall(r'\d+', text)
-    if numbers and len(numbers) == 1 and int(numbers[0]) > 5000: # 假設大於5000通常是還款或大筆金額
-        # 也可以選擇直接當作還款，或提供按鈕確認
+    if numbers and len(numbers) == 1 and int(numbers[0]) > 5000:
         amount = int(numbers[0])
         pending_payments[user_id] = amount
         
@@ -270,7 +255,6 @@ async def handle_text_input(message: types.Message):
         await message.reply(f"🎯 準備對 Boss 發動還款攻擊，金額：**${amount:,}**，請確認：", reply_markup=keyboard, parse_mode="Markdown")
         return
 
-    # 5. 一般文字：預設當作「記帳」處理
     if numbers:
         amount = int(numbers[0])
         db["current_expense"] += amount
@@ -286,7 +270,6 @@ async def handle_text_input(message: types.Message):
     else:
         await message.reply("💡 輸入數字與備註即可記帳（例如：`晚餐 150`），或輸入還款金額扣血，或輸入 /edit 修改資料。")
 
-# ================= 5. 啟動主程式 =================
 async def main():
     scheduler.add_job(job_daily_expense_reminder, 'cron', hour=21, minute=0)
     scheduler.add_job(job_settlement_reminder, 'cron', day='5,10', hour=9, minute=0)
