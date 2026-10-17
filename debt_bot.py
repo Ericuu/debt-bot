@@ -32,7 +32,7 @@ db = {
     "current_expense": 0           # 本月已花費
 }
 
-user_states = {}       # 記錄使用者狀態 (如等待修改或輸入收入)
+user_states = {}       # 記錄使用者狀態
 pending_payments = {}  # 暫存 OCR 辨識出來的還款金額
 
 # ================= 核心計算輔助函式 =================
@@ -82,7 +82,6 @@ async def cmd_status(message: types.Message):
 
 @dp.message(Command("edit"))
 async def cmd_edit(message: types.Message):
-    """讓使用者選擇要修正哪一個數值"""
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="💵 修改本月收入", callback_data="edit_income"),
@@ -280,7 +279,7 @@ async def handle_text_input(message: types.Message):
             fin = get_financial_summary()
             await message.reply(
                 f"✅ **【本月收入更新成功】**\n"
-                f"💵 登記收入：${income:,}\id"
+                f"💵 登記收入：${income:,}\n"
                 f"⚔️ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"───────────────────\n"
                 f"🛍️ 本月可用開銷上限：${db['expense_limit']:,}\n"
