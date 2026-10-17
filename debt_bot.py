@@ -237,8 +237,7 @@ async def handle_text_input(message: types.Message):
         
         fin = get_financial_summary() 
         await message.reply(
-            f"✅ **【本月已花費金額已修正為：${exp:,}】**\n
-            f"目前剩餘可用：${fin['remaining_budget']:,}"
+            f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}"
             )
             return
 
