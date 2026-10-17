@@ -239,7 +239,7 @@ async def handle_text_input(message: types.Message):
         await message.reply(
             f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}"
             )
-            return
+        return
 
     elif current_state == "edit_debt":
         numbers = re.findall(r'\d+', text)
