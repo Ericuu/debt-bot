@@ -232,7 +232,7 @@ async def handle_text_input(message: types.Message):
         elif current_state == "edit_expense": 
             numbers = re.findall(r'\d+', text) 
             if numbers: exp = int("".join(numbers)) 
-                db["current_expense"] = exp 
+            db["current_expense"] = exp 
             user_states[user_id] = None
         
         fin = get_financial_summary() 
