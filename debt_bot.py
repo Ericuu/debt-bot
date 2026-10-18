@@ -210,9 +210,12 @@ async def handle_text_message(message: types.Message):
             db["expense_limit"] = max(0, income - db["monthly_target"])
             user_states[user_id] = None
             fin = get_financial_summary()
+            # 這裡把原本有問題的那行改成極其單純的寫法
+            line1 = f"收入: ${income:,}"
+            line2 = f"扣除還款: ${db['monthly_target']:,}"
             reply_text = (
                 f"✅ **【收入更新成功】**\n"
-                f"💵 收入：${income:,} \vert{} 扣除還款：${db['monthly_target']:,}\n"
+                f"💵 {line1} | {line2}\n"
                 f"📁 可用上限：${db['expense_limit']:,}\n"
                 f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)" ) await message.reply( reply_text, reply_markup=get_main_keyboard() ) return      elif current_state == "edit_expense": numbers = re.findall(r"\d+", text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None fin = get_financial_summary() reply_text = ( f"✅ **【已花費修正為：${exp:,}】**\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
             )
