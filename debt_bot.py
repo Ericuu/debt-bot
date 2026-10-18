@@ -268,19 +268,3 @@ class SimpleHandler(BaseHTTPRequestHandler):
 
 
 def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    HTTPServer(("0.0.0.0", port), SimpleHandler).serve_forever()
-
-
-async def main():
-    scheduler.add_job(
-        job_daily_expense_reminder, "cron", hour=21, minute=0
-    )
-    scheduler.start()
-    threading.Thread(target=run_web_server, daemon=True).start()
-    logging.info("🌐 輕量網頁伺服器與機器人已全面啟動...")
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
