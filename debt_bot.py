@@ -8,12 +8,10 @@ from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from dotenv import load_dotenv
 
-# 讀取環境變數
-load_dotenv()
+# 直接從系統環境變數讀取 (Render 雲端會自動帶入)
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")  # 選填，可用於主動推播
+ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 
 # 初始化日誌
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +36,6 @@ user_states = {}
 
 def get_financial_summary():
     remaining_budget = db["expense_limit"] - db["current_expense"]
-    # 假設以當月剩餘天數計算每日可用 (簡化為當前剩餘可用)
     daily_allowance = max(0, remaining_budget / 30)
     return {
         "remaining_budget": remaining_budget,
@@ -133,20 +130,22 @@ async def handle_text_message(message: types.Message):
                 f"💵 登記收入：${income:,}\n"
                 f"❌ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"--------------------\n"
-                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n"
-                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)" 
-            ) 
-            return      
-            # 2. 修正已花費金額 
-        elif current_state == "edit_expense": 
-            numbers = re.findall(r"\d+", text) 
-            if numbers: 
-               exp = int("".join(numbers))  
-               db["current_expense"] = exp 
-               user_states[user_id] = None              
-               fin = get_financial_summary() 
-               await message.reply( 
-                   f"✅ **【本月已花費金額已修正為：${exp:,}】**\n目前剩餘可用：${fin['remaining_budget']:,}"
+                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)"
+            )
+            return
+
+    # 2. 修正已花費金額
+    elif current_state == "edit_expense":
+        numbers = re.findall(r"\d+", text)
+        if numbers:
+            exp = int("".join(numbers))
+            db["current_expense"] = exp
+            user_states[user_id] = None
+
+            fin = get_financial_summary()
+            await message.reply(
+                f"✅ **【本月已花費金額已修正為：${exp:,}】**\n"
+                f"目前剩餘可用：${fin['remaining_budget']:,}"
             )
             return
 
@@ -224,10 +223,10 @@ async def main():
     # 啟動定時任務排程
     scheduler.add_job(
         job_daily_expense_reminder, "cron", hour=21, minute=0
-    )  # 每天晚上 9 點提醒
+    )
     scheduler.start()
 
-    # 啟動背景網頁伺服器（用於滿足 Render Web Service 的 Port 需求）
+    # 啟動背景網頁伺服器（滿足 Render Web Service 的 Port 需求）
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
     logging.info("🌐 輕量網頁伺服器已在背景啟動...")
