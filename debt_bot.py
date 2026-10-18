@@ -109,9 +109,28 @@ async def cmd_start(message: types.Message):
 
     text = (
         "🎮 **【RPG 討伐 87萬巨獸系統（10號週期版）】**\n\n"
-        f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
-        f"🎯 還款目標：${target_str}\n"
-        f"💸 已花費：${exp_str}\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
+        + "👹 血量：$"
+        + debt_str
+        + " (["
+        + bar
+        + "] "
+        + str(hp_pct)
+        + "%)\n"
+        + "🎯 還款目標：$"
+        + target_str
+        + "\n"
+        + "💸 已花費：$"
+        + exp_str
+        + "\n"
+        + "💡 剩餘可用：**$"
+        + bud_str
+        + "** (至 "
+        + fin["cycle_end"]
+        + " 止，約 $"
+        + daily_str
+        + "/天，剩 "
+        + str(fin["days_left"])
+        + " 天)"
     )
     await message.reply(text, reply_markup=get_main_keyboard())
 
@@ -130,11 +149,34 @@ async def cmd_status(message: types.Message):
 
     text = (
         "📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
-        f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
-        f"• 還款目標：${target_str}\n"
-        f"• 收入：${inc_str}\n"
-        f"• 上限：${limit_str}\n"
-        f"• 已花費：${exp_str}\n" f"• 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
+        + "👹 血量：$"
+        + debt_str
+        + " (["
+        + bar
+        + "] "
+        + str(hp_pct)
+        + "%)\n"
+        + "• 還款目標：$"
+        + target_str
+        + "\n"
+        + "• 收入：$"
+        + inc_str
+        + "\n"
+        + "• 上限：$"
+        + limit_str
+        + "\n"
+        + "• 已花費：$"
+        + exp_str
+        + "\n"
+        + "• 剩餘可用：**$"
+        + bud_str
+        + "** (至 "
+        + fin["cycle_end"]
+        + " 止，約 $"
+        + daily_str
+        + "/天，剩 "
+        + str(fin["days_left"])
+        + " 天)"
     )
     await message.reply(text, reply_markup=get_main_keyboard())
 
@@ -150,8 +192,9 @@ async def cmd_edit(message: types.Message):
     user_states[message.from_user.id] = "edit_expense"
     exp_str = f"{db['current_expense']:,}"
     await message.reply(
-        f"✏️ 目前本月已花費為 **${exp_str}**。\n"
-        "請輸入**修正後的正確總金額**（例如：`3500`）："
+        "✏️ 目前本月已花費為 **$"
+        + exp_str
+        + "**。\n請輸入**修正後的正確總金額**（例如：`3500`）："
     )
 
 
@@ -173,11 +216,34 @@ async def handle_callback_query(callback: types.CallbackQuery):
 
         text = (
             "📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
-            f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
-            f"• 還款目標：${target_str}\n"
-            f"• 收入：${inc_str}\n"
-            f"• 上限：${limit_str}\n"
-            f"• 已花費：${exp_str}\n" f"• 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
+            + "👹 血量：$"
+            + debt_str
+            + " (["
+            + bar
+            + "] "
+            + str(hp_pct)
+            + "%)\n"
+            + "• 還款目標：$"
+            + target_str
+            + "\n"
+            + "• 收入：$"
+            + inc_str
+            + "\n"
+            + "• 上限：$"
+            + limit_str
+            + "\n"
+            + "• 已花費：$"
+            + exp_str
+            + "\n"
+            + "• 剩餘可用：**$"
+            + bud_str
+            + "** (至 "
+            + fin["cycle_end"]
+            + " 止，約 $"
+            + daily_str
+            + "/天，剩 "
+            + str(fin["days_left"])
+            + " 天)"
         )
         await callback.message.edit_text(
             text, reply_markup=get_main_keyboard()
@@ -186,9 +252,9 @@ async def handle_callback_query(callback: types.CallbackQuery):
         user_states[user_id] = "do_repay"
         debt_str = f"{db['total_debt']:,}"
         await callback.message.reply(
-            "⚔️ **準備發動還款攻擊！**\n"
-            f"目前血量：${debt_str}\n"
-            "請輸入這次**還款金額**（例如：`50000`）："
+            "⚔️ **準備發動還款攻擊！**\n目前血量：$"
+            + debt_str
+            + "\n請輸入這次**還款金額**（例如：`50000`）："
         )
     elif action == "btn_income":
         user_states[user_id] = "set_income"
@@ -197,7 +263,7 @@ async def handle_callback_query(callback: types.CallbackQuery):
         user_states[user_id] = "edit_expense"
         exp_str = f"{db['current_expense']:,}"
         await callback.message.reply(
-            f"✏️ 目前已花費 **${exp_str}**，請輸入修正後金額："
+            "✏️ 目前已花費 **$" + exp_str + "**，請輸入修正後金額："
         )
 
     await callback.answer()
@@ -220,9 +286,17 @@ async def handle_text_message(message: types.Message):
             repay_str = f"{repay_amt:,}"
             reply_text = (
                 "💥 **【暴擊！強力還款斬擊！】**\n"
-                f"⚔️ 造成傷害：-${repay_str}\n"
-                f"👹 剩餘血量：**${debt_str}** ([{bar}] {hp_pct}%)\n"
-                "🔥 太神啦！離自由更近一步！"
+                + "⚔️ 造成傷害：-$"
+                + repay_str
+                + "\n"
+                + "👹 剩餘血量：**$"
+                + debt_str
+                + "** (["
+                + bar
+                + "] "
+                + str(hp_pct)
+                + "%)\n"
+                + "🔥 太神啦！離自由更近一步！"
             )
             await message.reply(
                 reply_text, reply_markup=get_main_keyboard()
@@ -244,9 +318,52 @@ async def handle_text_message(message: types.Message):
             daily_str = f"{fin['daily_allowance']:,.0f}"
             reply_text = (
                 "✅ **【收入更新成功】**\n"
-                f"💵 收入: ${inc_str} \vert{} 扣除還款: ${target_str}\n"
-                f"📁 可用上限：${limit_str}\n"
-                f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)" ) await message.reply( reply_text, reply_markup=get_main_keyboard() ) return      elif current_state == "edit_expense": numbers = re.findall(r"\d+", text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None fin = get_financial_summary() exp_str = f"{exp:,}" bud_str = f"{fin['remaining_budget']:,}" daily_str = f"{fin['daily_allowance']:,.0f}" reply_text = ( f"✅ **【已花費修正為：${exp_str}】**\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
+                + "💵 收入: $"
+                + inc_str
+                + " | 扣除還款: $"
+                + target_str
+                + "\n"
+                + "📁 可用上限：$"
+                + limit_str
+                + "\n"
+                + "💡 剩餘可用：**$"
+                + bud_str
+                + "** (至 "
+                + fin["cycle_end"]
+                + " 止，約 $"
+                + daily_str
+                + "/天，剩 "
+                + str(fin["days_left"])
+                + " 天)"
+            )
+            await message.reply(
+                reply_text, reply_markup=get_main_keyboard()
+            )
+            return
+
+    elif current_state == "edit_expense":
+        numbers = re.findall(r"\d+", text)
+        if numbers:
+            exp = int("".join(numbers))
+            db["current_expense"] = exp
+            user_states[user_id] = None
+            fin = get_financial_summary()
+            exp_str = f"{exp:,}"
+            bud_str = f"{fin['remaining_budget']:,}"
+            daily_str = f"{fin['daily_allowance']:,.0f}"
+            reply_text = (
+                "✅ **【已花費修正為：$"
+                + exp_str
+                + "】**\n"
+                + "💡 剩餘可用：**$"
+                + bud_str
+                + "** (至 "
+                + fin["cycle_end"]
+                + " 止，約 $"
+                + daily_str
+                + "/天，剩 "
+                + str(fin["days_left"])
+                + " 天)"
             )
             await message.reply(
                 reply_text, reply_markup=get_main_keyboard()
@@ -263,8 +380,21 @@ async def handle_text_message(message: types.Message):
         bud_str = f"{fin['remaining_budget']:,}"
         daily_str = f"{fin['daily_allowance']:,.0f}"
         reply_text = (
-            f"📥 已記帳：+${amt_str}\n"
-            f"💸 本月累計：${exp_tot_str}\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
+            "📥 已記帳：+$"
+            + amt_str
+            + "\n"
+            + "💸 本月累計：$"
+            + exp_tot_str
+            + "\n"
+            + "💡 剩餘可用：**$"
+            + bud_str
+            + "** (至 "
+            + fin["cycle_end"]
+            + " 止，約 $"
+            + daily_str
+            + "/天，剩 "
+            + str(fin["days_left"])
+            + " 天)"
         )
         await message.reply(reply_text, reply_markup=get_main_keyboard())
     else:
@@ -285,10 +415,26 @@ async def job_daily_expense_reminder():
         try:
             reminder_text = (
                 "⏰ **【每日財務打卡提醒】**\n"
-                f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
-                f"• 累計花費：${exp_str}\n"
-                f"• 剩餘可用：${bud_str} (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)\n"
-                "今天也要克制慾望，準備迎接下次暴擊！"
+                + "👹 血量：$"
+                + debt_str
+                + " (["
+                + bar
+                + "] "
+                + str(hp_pct)
+                + "%)\n"
+                + "• 累計花費：$"
+                + exp_str
+                + "\n"
+                + "• 剩餘可用：$"
+                + bud_str
+                + " (至 "
+                + fin["cycle_end"]
+                + " 止，約 $"
+                + daily_str
+                + "/天，剩 "
+                + str(fin["days_left"])
+                + " 天)\n"
+                + "今天也要克制慾望，準備迎接下次暴擊！"
             )
             await bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
