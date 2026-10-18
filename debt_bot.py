@@ -71,7 +71,7 @@ def get_financial_summary():
     }
 
 
-# 計算打怪血量百分比視覺條 (修正百分比符號跳脫)
+# 計算打怪血量百分比視覺條
 def get_hp_bar():
     initial_debt = 874000
     current_debt = max(0, db["total_debt"])
@@ -84,7 +84,7 @@ def get_hp_bar():
 
 # 產生主選單按鈕
 def get_main_keyboard():
-    keyboard = InlineKeyboardMarkup(
+    return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
@@ -104,7 +104,6 @@ def get_main_keyboard():
             ],
         ]
     )
-    return keyboard
 
 
 # ==================== 1. Telegram 機器人指令與按鈕互動 ====================
@@ -117,28 +116,28 @@ async def cmd_start(message: types.Message):
     fin = get_financial_summary()
     bar, hp_pct = get_hp_bar()
 
-    await message.reply(
+    text = (
         f"🎮 **【RPG 討伐 87萬巨獸系統（10號週期版）啟動！】**\n\n"
         f"👹 **巨獸血量 (總債務)**：${db['total_debt']:,}\n" f"[{bar}] {hp_pct}\%\n\n" f"🎯 每月還款目標：**${db['monthly_target']:,}**\n" f"💸 本月已花費：**${db['current_expense']:,}**\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)\n\n"
-        f"📌 **直接輸入數字記錄開銷，或點擊下方按鈕操作！**",
-        reply_markup=get_main_keyboard(),
+        f"📌 **直接輸入數字記錄開銷，或點擊下方按鈕操作！**"
     )
+    await message.reply(text, reply_markup=get_main_keyboard())
 
 
 @dp.message(Command("status"))
 async def cmd_status(message: types.Message):
     fin = get_financial_summary()
     bar, hp_pct = get_hp_bar()
-    await message.reply(
+    text = (
         f"📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
         f"👹 剩餘血量：${db['total_debt']:,}\n"
         f"[{bar}] {hp_pct}%\n\n"
         f"• 每月還款目標：${db['monthly_target']:,}\n"
         f"• 本月收入：${db['monthly_income']:,}\n"
         f"• 可用開銷上限：${db['expense_limit']:,}\n"
-        f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)",
-        reply_markup=get_main_keyboard(),
+        f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
     )
+    await message.reply(text, reply_markup=get_main_keyboard())
 
 
 @dp.message(Command("income"))
@@ -168,15 +167,17 @@ async def handle_callback_query(callback: types.CallbackQuery):
     if action == "btn_status":
         fin = get_financial_summary()
         bar, hp_pct = get_hp_bar()
-        await callback.message.edit_text(
+        text = (
             f"📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
             f"👹 剩餘血量：${db['total_debt']:,}\n"
             f"[{bar}] {hp_pct}%\n\n"
             f"• 每月還款目標：${db['monthly_target']:,}\n"
             f"• 本月收入：${db['monthly_income']:,}\n"
             f"• 可用開銷上限：${db['expense_limit']:,}\n"
-            f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)",
-            reply_markup=get_main_keyboard(),
+            f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+        )
+        await callback.message.edit_text(
+            text, reply_markup=get_main_keyboard()
         )
     elif action == "btn_repay":
         user_states[user_id] = "do_repay"
@@ -194,4 +195,127 @@ async def handle_callback_query(callback: types.CallbackQuery):
         user_states[user_id] = "edit_expense"
         await callback.message.reply(
             f"✏️ 目前本月已花費為 **${db['current_expense']:,}**。\n"
-            f
+            f"請直接傳送你想**修正後的正確總金額**（例如：`3500`）："
+        )
+
+    await callback.answer()
+
+
+@dp.message(F.text)
+async def handle_text_message(message: types.Message):
+    user_id = message.from_user.id
+    text = message.text.strip()
+    current_state = user_states.get(user_id)
+
+    if current_state == "do_repay":
+        numbers = re.findall(r"\d+", text)
+        if numbers:
+            repay_amt = int("".join(numbers))
+            db["total_debt"] = max(0, db["total_debt"] - repay_amt)
+            user_states[user_id] = None
+            bar, hp_pct = get_hp_bar()
+
+            reply_text = (
+                f"💥 **【暴擊！對巨獸使出強力還款斬擊！】**\n"
+                f"⚔️ 造成傷害：-${repay_amt:,}\n"
+                f"👹 巨獸剩餘血量：**${db['total_debt']:,}**\n"
+                f"[{bar}] {hp_pct}%\n"
+                f"太神啦！離解鎖完全自由又更近了一步！🔥"
+            )
+            await message.reply(
+                reply_text, reply_markup=get_main_keyboard()
+            )
+            return
+
+    elif current_state == "set_income":
+        numbers = re.findall(r"\d+", text)
+        if numbers:
+            income = int("".join(numbers))
+            db["monthly_income"] = income
+            db["expense_limit"] = max(0, income - db["monthly_target"])
+            user_states[user_id] = None
+
+            fin = get_financial_summary()
+            reply_text = (
+                f"✅ **【本月收入更新成功】**\n"
+                f"💵 登記收入：${income:,}\n"
+                f"❌ 預定扣除還款：${db['monthly_target']:,}\n"
+                f"--------------------\n"
+                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n"
+                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)" ) await message.reply( reply_text, reply_markup=get_main_keyboard() ) return      elif current_state == "edit_expense": numbers = re.findall(r"\d+", text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None              fin = get_financial_summary() reply_text = ( f"✅ **【本月已花費金額已修正為：${exp:,}】**\n" f"剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+            )
+            await message.reply(
+                reply_text, reply_markup=get_main_keyboard()
+            )
+            return
+
+    numbers = re.findall(r"\d+", text)
+    if numbers:
+        amount = int("".join(numbers))
+        db["current_expense"] += amount
+        fin = get_financial_summary()
+        reply_text = (
+            f"📥 已記帳：+${amount:,}\n"
+            f"💸 本月累計花費：${db['current_expense']:,}\n" f"💡 剩餘可用預算：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+        )
+        await message.reply(
+            reply_text, reply_markup=get_main_keyboard()
+        )
+    else:
+        await message.reply(
+            "🤖 看不太懂你的指令呢！可以直接傳送數字記帳，或點擊下方按鈕操作。",
+            reply_markup=get_main_keyboard(),
+        )
+
+
+async def job_daily_expense_reminder():
+    if ADMIN_CHAT_ID:
+        fin = get_financial_summary()
+        bar, hp_pct = get_hp_bar()
+        try:
+            reminder_text = (
+                f"⏰ **【每日財務打卡提醒】**\n"
+                f"👹 巨獸血量：${db['total_debt']:,} [{bar}] {hp_pct}%\n"
+                f"• 本月累計花費：${db['current_expense']:,}\n"
+                f"• 剩餘可用：${fin['remaining_budget']:,} (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)\n"
+                f"今天也要克制慾望，準備迎來下次的還款暴擊！"
+            )
+            await bot.send_message(
+                chat_id=ADMIN_CHAT_ID,
+                text=reminder_text,
+                reply_markup=get_main_keyboard(),
+            )
+        except Exception as e:
+            logging.error(f"Daily reminder failed: {e}")
+
+
+class SimpleHandler(BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"RPG Debt Bot is alive and running!")
+
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), SimpleHandler)
+    server.serve_forever()
+
+
+async def main():
+    scheduler.add_job(
+        job_daily_expense_reminder, "cron", hour=21, minute=0
+    )
+    scheduler.start()
+
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    web_thread.start()
+    logging.info("🌐 輕量網頁伺服器已在背景啟動...")
+
+    logging.info("🤖 RPG 還款機器人已成功啟動並開始監聽...")
+    await dp.start_polling(bot)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
