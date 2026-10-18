@@ -7,9 +7,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# 直接從系統環境變數讀取 (Render 雲端會自動帶入)
+# 直接從系統環境變數讀取
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_CHAT_ID = os.getenv("ADMIN_CHAT_ID")
 
@@ -30,7 +31,7 @@ db = {
     "current_expense": 0,
 }
 
-# 記錄用戶目前的操作狀態 (例如: "edit_expense", "edit_debt", "set_income")
+# 記錄用戶目前的操作狀態
 user_states = {}
 
 
@@ -43,7 +44,32 @@ def get_financial_summary():
     }
 
 
-# ==================== 1. Telegram 機器人指令與互動 ====================
+# 產生主選單按鈕
+def get_main_keyboard():
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📊 查看目前狀態", callback_data="btn_status"
+                ),
+                InlineKeyboardButton(
+                    text="💰 設定本月收入", callback_data="btn_income"
+                ),
+            ],
+            [
+                InlineKeyboardButton(
+                    text="✏️ 修正已花費", callback_data="btn_edit_exp"
+                ),
+                InlineKeyboardButton(
+                    text="🎯 修改總債務", callback_data="btn_edit_debt"
+                ),
+            ],
+        ]
+    )
+    return keyboard
+
+
+# ==================== 1. Telegram 機器人指令與按鈕互動 ====================
 
 
 @dp.message(Command("start"))
@@ -57,12 +83,8 @@ async def cmd_start(message: types.Message):
         f"🎯 每月還款目標：**${db['monthly_target']:,}**\n"
         f"💸 本月已花費：**${db['current_expense']:,}**\n"
         f"💡 本月剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)\n\n"
-        f"📌 **可用指令選單：**\n"
-        f"• 直接輸入數字（例如 `150`）來記錄今日開銷\n"
-        f"• `/status` - 查看目前財務與打怪進度\n"
-        f"• `/income` - 設定本月總收入\n"
-        f"• `/edit` - 修正本月已花費金額\n"
-        f"• `/debt` - 修改總債務金額"
+        f"📌 **你可以直接輸入數字（例如 `150`）來記錄今日開銷，或使用下方按鈕操作：**",
+        reply_markup=get_main_keyboard(),
     )
 
 
@@ -75,7 +97,8 @@ async def cmd_status(message: types.Message):
         f"• 每月還款目標：${db['monthly_target']:,}\n"
         f"• 本月收入：${db['monthly_income']:,}\n"
         f"• 可用開銷上限：${db['expense_limit']:,}\n"
-        f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)"
+        f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)",
+        reply_markup=get_main_keyboard(),
     )
 
 
@@ -108,6 +131,51 @@ async def cmd_debt(message: types.Message):
     )
 
 
+# 處理按鈕點擊事件 (Callback Query)
+@dp.callback_query(F.data.startswith("btn_"))
+async def handle_callback_query(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    action = callback.data
+    data_map = {
+        "btn_status": "status",
+        "btn_income": "income",
+        "btn_edit_exp": "edit",
+        "btn_edit_debt": "debt",
+    }
+
+    # 模擬對應指令動作
+    if action == "btn_status":
+        fin = get_financial_summary()
+        await callback.message.edit_text(
+            f"📊 **【目前財務狀態】**\n"
+            f"• 總債務：${db['total_debt']:,}\n"
+            f"• 每月還款目標：${db['monthly_target']:,}\n"
+            f"• 本月收入：${db['monthly_income']:,}\n"
+            f"• 可用開銷上限：${db['expense_limit']:,}\n"
+            f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)",
+            reply_markup=get_main_keyboard(),
+        )
+    elif action == "btn_income":
+        user_states[user_id] = "set_income"
+        await callback.message.reply(
+            "💰 請回傳你**本月的總收入金額**（例如：`60000`）："
+        )
+    elif action == "btn_edit_exp":
+        user_states[user_id] = "edit_expense"
+        await callback.message.reply(
+            f"✏️ 目前本月已花費為 **${db['current_expense']:,}**。\n"
+            f"請直接傳送你想**修正後的正確總金額**（例如：`3500`）："
+        )
+    elif action == "btn_edit_debt":
+        user_states[user_id] = "edit_debt"
+        await callback.message.reply(
+            f"🚨 目前總債務為 **${db['total_debt']:,}**。\n"
+            f"請直接傳送你**最新的總債務金額**："
+        )
+
+    await callback.answer()
+
+
 # 處理文字訊息（記帳、狀態輸入）
 @dp.message(F.text)
 async def handle_text_message(message: types.Message):
@@ -130,7 +198,8 @@ async def handle_text_message(message: types.Message):
                 f"💵 登記收入：${income:,}\n"
                 f"❌ 預定扣除還款：${db['monthly_target']:,}\n"
                 f"--------------------\n"
-                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)"
+                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (約 ${fin['daily_allowance']:,.0f}/天)",
+                reply_markup=get_main_keyboard(),
             )
             return
 
@@ -145,7 +214,8 @@ async def handle_text_message(message: types.Message):
             fin = get_financial_summary()
             await message.reply(
                 f"✅ **【本月已花費金額已修正為：${exp:,}】**\n"
-                f"目前剩餘可用：${fin['remaining_budget']:,}"
+                f"目前剩餘可用：${fin['remaining_budget']:,}",
+                reply_markup=get_main_keyboard(),
             )
             return
 
@@ -158,7 +228,8 @@ async def handle_text_message(message: types.Message):
             user_states[user_id] = None
 
             await message.reply(
-                f"🎯 **【總債務金額已更新為：${debt:,}】** 繼續加油打怪！"
+                f"🎯 **【總債務金額已更新為：${debt:,}】** 繼續加油打怪！",
+                reply_markup=get_main_keyboard(),
             )
             return
 
@@ -171,11 +242,13 @@ async def handle_text_message(message: types.Message):
         await message.reply(
             f"📥 已記帳：+${amount:,}\n"
             f"💸 本月累計花費：${db['current_expense']:,}\n"
-            f"💡 剩餘可用預算：**${fin['remaining_budget']:,}**"
+            f"💡 剩餘可用預算：**${fin['remaining_budget']:,}**",
+            reply_markup=get_main_keyboard(),
         )
     else:
         await message.reply(
-            "🤖 看不太懂你的指令呢！可以直接傳送數字記帳，或輸入 `/status` 查看狀態。"
+            "🤖 看不太懂你的指令呢！可以直接傳送數字記帳，或點擊下方按鈕操作。",
+            reply_markup=get_main_keyboard(),
         )
 
 
@@ -194,6 +267,7 @@ async def job_daily_expense_reminder():
                     f"• 剩餘可用預算：${fin['remaining_budget']:,}\n"
                     f"今天也要克制慾望，離解鎖自由更近一步！"
                 ),
+                reply_markup=get_main_keyboard(),
             )
         except Exception as e:
             logging.error(f"Daily reminder failed: {e}")
@@ -220,13 +294,11 @@ def run_web_server():
 
 
 async def main():
-    # 啟動定時任務排程
     scheduler.add_job(
         job_daily_expense_reminder, "cron", hour=21, minute=0
     )
     scheduler.start()
 
-    # 啟動背景網頁伺服器（滿足 Render Web Service 的 Port 需求）
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
     logging.info("🌐 輕量網頁伺服器已在背景啟動...")
