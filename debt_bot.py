@@ -45,25 +45,21 @@ def get_financial_summary():
     current_month = now.month
     current_day = now.day
 
-    # 判斷當前的計費週期（以 10 號為分界）
     if current_day >= 10:
         start_date = datetime.date(current_year, current_month, 10)
-        # 計算下個月
         if current_month == 12:
             end_date = datetime.date(current_year + 1, 1, 10)
         else:
             end_date = datetime.date(current_year, current_month + 1, 10)
     else:
-        # 如果還沒到 10 號，週期是從上個月 10 號開始
         if current_month == 1:
             start_date = datetime.date(current_year - 1, 12, 10)
         else:
             start_date = datetime.date(current_year, current_month - 1, 10)
         end_date = datetime.date(current_year, current_month, 10)
 
-    # 計算總天數與剩餘天數
     total_days = (end_date - start_date).days
-    days_left = max(1, (end_date - now.date()).days)  # 確保至少剩 1 天，避免除以零
+    days_left = max(1, (end_date - now.date()).days)
 
     daily_allowance = max(0, remaining_budget / days_left)
 
@@ -240,4 +236,7 @@ async def handle_text_message(message: types.Message):
             await message.reply(
                 f"✅ **【本月收入更新成功】**\n"
                 f"💵 登記收入：${income:,}\n"
-                f"❌ 預定扣除還款：${db['monthly_target']:,}\
+                f"❌ 預定扣除還款：${db['monthly_target']:,}\n"
+                f"--------------------\n"
+                f"📁 本月可用開銷上限：${db['expense_limit']:,}\n"
+                f"💡 剩餘可用：**${fin['remaining_budget']:,}**
