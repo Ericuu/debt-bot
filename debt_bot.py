@@ -210,7 +210,6 @@ async def handle_text_message(message: types.Message):
             db["expense_limit"] = max(0, income - db["monthly_target"])
             user_states[user_id] = None
             fin = get_financial_summary()
-            # 這裡把原本有問題的那行改成極其單純的寫法
             line1 = f"收入: ${income:,}"
             line2 = f"扣除還款: ${db['monthly_target']:,}"
             reply_text = (
