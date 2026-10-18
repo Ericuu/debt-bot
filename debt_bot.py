@@ -101,11 +101,17 @@ async def cmd_start(message: types.Message):
     user_states[message.from_user.id] = None
     fin = get_financial_summary()
     bar, hp_pct = get_hp_bar()
+    debt_str = f"{db['total_debt']:,}"
+    target_str = f"{db['monthly_target']:,}"
+    exp_str = f"{db['current_expense']:,}"
+    bud_str = f"{fin['remaining_budget']:,}"
+    daily_str = f"{fin['daily_allowance']:,.0f}"
+
     text = (
-        f"🎮 **【RPG 討伐 87萬巨獸系統（10號週期版）】**\n\n"
-        f"👹 血量：${db['total_debt']:,} ([{bar}] {hp_pct}%)\n"
-        f"🎯 還款目標：${db['monthly_target']:,}\n"
-        f"💸 已花費：${db['current_expense']:,}\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+        "🎮 **【RPG 討伐 87萬巨獸系統（10號週期版）】**\n\n"
+        f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
+        f"🎯 還款目標：${target_str}\n"
+        f"💸 已花費：${exp_str}\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
     )
     await message.reply(text, reply_markup=get_main_keyboard())
 
@@ -114,13 +120,21 @@ async def cmd_start(message: types.Message):
 async def cmd_status(message: types.Message):
     fin = get_financial_summary()
     bar, hp_pct = get_hp_bar()
+    debt_str = f"{db['total_debt']:,}"
+    target_str = f"{db['monthly_target']:,}"
+    inc_str = f"{db['monthly_income']:,}"
+    limit_str = f"{db['expense_limit']:,}"
+    exp_str = f"{db['current_expense']:,}"
+    bud_str = f"{fin['remaining_budget']:,}"
+    daily_str = f"{fin['daily_allowance']:,.0f}"
+
     text = (
-        f"📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
-        f"👹 血量：${db['total_debt']:,} ([{bar}] {hp_pct}%)\n"
-        f"• 還款目標：${db['monthly_target']:,}\n"
-        f"• 收入：${db['monthly_income']:,}\n"
-        f"• 上限：${db['expense_limit']:,}\n"
-        f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+        "📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
+        f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
+        f"• 還款目標：${target_str}\n"
+        f"• 收入：${inc_str}\n"
+        f"• 上限：${limit_str}\n"
+        f"• 已花費：${exp_str}\n" f"• 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
     )
     await message.reply(text, reply_markup=get_main_keyboard())
 
@@ -134,9 +148,10 @@ async def cmd_income(message: types.Message):
 @dp.message(Command("edit"))
 async def cmd_edit(message: types.Message):
     user_states[message.from_user.id] = "edit_expense"
+    exp_str = f"{db['current_expense']:,}"
     await message.reply(
-        f"✏️ 目前本月已花費為 **${db['current_expense']:,}**。\n"
-        f"請輸入**修正後的正確總金額**（例如：`3500`）："
+        f"✏️ 目前本月已花費為 **${exp_str}**。\n"
+        "請輸入**修正後的正確總金額**（例如：`3500`）："
     )
 
 
@@ -148,31 +163,41 @@ async def handle_callback_query(callback: types.CallbackQuery):
     if action == "btn_status":
         fin = get_financial_summary()
         bar, hp_pct = get_hp_bar()
+        debt_str = f"{db['total_debt']:,}"
+        target_str = f"{db['monthly_target']:,}"
+        inc_str = f"{db['monthly_income']:,}"
+        limit_str = f"{db['expense_limit']:,}"
+        exp_str = f"{db['current_expense']:,}"
+        bud_str = f"{fin['remaining_budget']:,}"
+        daily_str = f"{fin['daily_allowance']:,.0f}"
+
         text = (
-            f"📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
-            f"👹 血量：${db['total_debt']:,} ([{bar}] {hp_pct}%)\n"
-            f"• 還款目標：${db['monthly_target']:,}\n"
-            f"• 收入：${db['monthly_income']:,}\n"
-            f"• 上限：${db['expense_limit']:,}\n"
-            f"• 已花費：${db['current_expense']:,}\n" f"• 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+            "📊 **【巨獸戰鬥狀態 (10號週期)】**\n"
+            f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
+            f"• 還款目標：${target_str}\n"
+            f"• 收入：${inc_str}\n"
+            f"• 上限：${limit_str}\n"
+            f"• 已花費：${exp_str}\n" f"• 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
         )
         await callback.message.edit_text(
             text, reply_markup=get_main_keyboard()
         )
     elif action == "btn_repay":
         user_states[user_id] = "do_repay"
+        debt_str = f"{db['total_debt']:,}"
         await callback.message.reply(
-            f"⚔️ **準備發動還款攻擊！**\n"
-            f"目前血量：${db['total_debt']:,}\n"
-            f"請輸入這次**還款金額**（例如：`50000`）："
+            "⚔️ **準備發動還款攻擊！**\n"
+            f"目前血量：${debt_str}\n"
+            "請輸入這次**還款金額**（例如：`50000`）："
         )
     elif action == "btn_income":
         user_states[user_id] = "set_income"
         await callback.message.reply("💰 請輸入你**本月的總收入金額**：")
     elif action == "btn_edit_exp":
         user_states[user_id] = "edit_expense"
+        exp_str = f"{db['current_expense']:,}"
         await callback.message.reply(
-            f"✏️ 目前已花費 **${db['current_expense']:,}**，請輸入修正後金額："
+            f"✏️ 目前已花費 **${exp_str}**，請輸入修正後金額："
         )
 
     await callback.answer()
@@ -191,11 +216,13 @@ async def handle_text_message(message: types.Message):
             db["total_debt"] = max(0, db["total_debt"] - repay_amt)
             user_states[user_id] = None
             bar, hp_pct = get_hp_bar()
+            debt_str = f"{db['total_debt']:,}"
+            repay_str = f"{repay_amt:,}"
             reply_text = (
-                f"💥 **【暴擊！強力還款斬擊！】**\n"
-                f"⚔️ 造成傷害：-${repay_amt:,}\n"
-                f"👹 剩餘血量：**${db['total_debt']:,}** ([{bar}] {hp_pct}%)\n"
-                f"🔥 太神啦！離自由更近一步！"
+                "💥 **【暴擊！強力還款斬擊！】**\n"
+                f"⚔️ 造成傷害：-${repay_str}\n"
+                f"👹 剩餘血量：**${debt_str}** ([{bar}] {hp_pct}%)\n"
+                "🔥 太神啦！離自由更近一步！"
             )
             await message.reply(
                 reply_text, reply_markup=get_main_keyboard()
@@ -210,11 +237,16 @@ async def handle_text_message(message: types.Message):
             db["expense_limit"] = max(0, income - db["monthly_target"])
             user_states[user_id] = None
             fin = get_financial_summary()
+            inc_str = f"{income:,}"
+            target_str = f"{db['monthly_target']:,}"
+            limit_str = f"{db['expense_limit']:,}"
+            bud_str = f"{fin['remaining_budget']:,}"
+            daily_str = f"{fin['daily_allowance']:,.0f}"
             reply_text = (
-                f"✅ **【收入更新成功】**\n"
-                f"💵 收入: ${income:,} \vert{} 扣除還款: ${db['monthly_target']:,}\n"
-                f"📁 可用上限：${db['expense_limit']:,}\n"
-                f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)" ) await message.reply( reply_text, reply_markup=get_main_keyboard() ) return      elif current_state == "edit_expense": numbers = re.findall(r"\d+", text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None fin = get_financial_summary() reply_text = ( f"✅ **【已花費修正為：${exp:,}】**\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+                "✅ **【收入更新成功】**\n"
+                f"💵 收入: ${inc_str} \vert{} 扣除還款: ${target_str}\n"
+                f"📁 可用上限：${limit_str}\n"
+                f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)" ) await message.reply( reply_text, reply_markup=get_main_keyboard() ) return      elif current_state == "edit_expense": numbers = re.findall(r"\d+", text) if numbers: exp = int("".join(numbers)) db["current_expense"] = exp user_states[user_id] = None fin = get_financial_summary() exp_str = f"{exp:,}" bud_str = f"{fin['remaining_budget']:,}" daily_str = f"{fin['daily_allowance']:,.0f}" reply_text = ( f"✅ **【已花費修正為：${exp_str}】**\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
             )
             await message.reply(
                 reply_text, reply_markup=get_main_keyboard()
@@ -226,9 +258,13 @@ async def handle_text_message(message: types.Message):
         amount = int("".join(numbers))
         db["current_expense"] += amount
         fin = get_financial_summary()
+        amt_str = f"{amount:,}"
+        exp_tot_str = f"{db['current_expense']:,}"
+        bud_str = f"{fin['remaining_budget']:,}"
+        daily_str = f"{fin['daily_allowance']:,.0f}"
         reply_text = (
-            f"📥 已記帳：+${amount:,}\n"
-            f"💸 本月累計：${db['current_expense']:,}\n" f"💡 剩餘可用：**${fin['remaining_budget']:,}** (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)"
+            f"📥 已記帳：+${amt_str}\n"
+            f"💸 本月累計：${exp_tot_str}\n" f"💡 剩餘可用：**${bud_str}** (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)"
         )
         await message.reply(reply_text, reply_markup=get_main_keyboard())
     else:
@@ -242,13 +278,17 @@ async def job_daily_expense_reminder():
     if ADMIN_CHAT_ID:
         fin = get_financial_summary()
         bar, hp_pct = get_hp_bar()
+        debt_str = f"{db['total_debt']:,}"
+        exp_str = f"{db['current_expense']:,}"
+        bud_str = f"{fin['remaining_budget']:,}"
+        daily_str = f"{fin['daily_allowance']:,.0f}"
         try:
             reminder_text = (
-                f"⏰ **【每日財務打卡提醒】**\n"
-                f"👹 血量：${db['total_debt']:,} ([{bar}] {hp_pct}%)\n"
-                f"• 累計花費：${db['current_expense']:,}\n"
-                f"• 剩餘可用：${fin['remaining_budget']:,} (至 {fin['cycle_end']} 止，約 ${fin['daily_allowance']:,.0f}/天，剩 {fin['days_left']} 天)\n"
-                f"今天也要克制慾望，準備迎接下次暴擊！"
+                "⏰ **【每日財務打卡提醒】**\n"
+                f"👹 血量：${debt_str} ([{bar}] {hp_pct}%)\n"
+                f"• 累計花費：${exp_str}\n"
+                f"• 剩餘可用：${bud_str} (至 {fin['cycle_end']} 止，約 ${daily_str}/天，剩 {fin['days_left']} 天)\n"
+                "今天也要克制慾望，準備迎接下次暴擊！"
             )
             await bot.send_message(
                 chat_id=ADMIN_CHAT_ID,
